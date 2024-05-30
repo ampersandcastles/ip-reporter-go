@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"net"
 
 	"github.com/google/gopacket"
@@ -18,14 +19,14 @@ func main() {
 	// Get a list of available network interfaces for sniffing
 	devices, err := pcap.FindAllDevs()
 	if err != nil {
-		panic(err)
+		log.Fatalf("Error finding devices: %v", err)
 	}
 
 	// Print the interfaces for debugging purposes
-	// fmt.Println("Available interfaces:")
-	// for _, device := range devices {
-	//     fmt.Println(device)
-	// }
+	fmt.Println("Available interfaces:")
+	for _, device := range devices {
+		fmt.Println(device.Name)
+	}
 
 	// Choose the correct interface for sniffing
 	var handle *pcap.Handle
@@ -33,17 +34,26 @@ func main() {
 		if len(device.Addresses) > 0 {
 			handle, err = pcap.OpenLive(device.Name, 1600, true, pcap.BlockForever)
 			if err == nil {
+				fmt.Println("Using interface:", device.Name)
 				break
+			} else {
+				fmt.Printf("Error opening device %s: %v\n", device.Name, err)
 			}
 		}
 	}
 	if handle == nil {
-		panic("No suitable interface found")
+		log.Fatal("No suitable interface found")
 	}
 	defer handle.Close()
 
-	// Print the chosen interface
-	// fmt.Println("Chosen interface:", handle)
+	// Construct the BPF filter string
+	filter := fmt.Sprintf("udp and src port %d and dst port %d and dst host %s", sourcePort, destinationPort, destinationIP.String())
+
+	// Apply the BPF filter to the handle
+	err = handle.SetBPFFilter(filter)
+	if err != nil {
+		log.Fatalf("Error setting BPF filter: %v", err)
+	}
 
 	fmt.Println("Listening...")
 
@@ -52,6 +62,8 @@ func main() {
 	for packet := range packetSource.Packets() {
 		// Parse the packet as an Ethernet packet
 		if ethernetPacket := packet.Layer(layers.LayerTypeEthernet); ethernetPacket != nil {
+			eth, _ := ethernetPacket.(*layers.Ethernet)
+
 			if ipv4Packet := packet.Layer(layers.LayerTypeIPv4); ipv4Packet != nil {
 				ip, _ := ipv4Packet.(*layers.IPv4)
 
@@ -62,9 +74,7 @@ func main() {
 					// Check if the packet matches the specified destination IP address and UDP ports
 					if ip.DstIP.Equal(destinationIP) && udp.SrcPort == layers.UDPPort(sourcePort) && udp.DstPort == layers.UDPPort(destinationPort) {
 						fmt.Println("Miner IP:", ip.SrcIP)
-					} else {
-						// Filter out non-matching packets
-						// fmt.Printf("Non-matching packet: %s:%d -> %s:%d\n", ip.SrcIP, udp.SrcPort, ip.DstIP, udp.DstPort)
+						fmt.Println("Miner MAC:", eth.SrcMAC)
 					}
 				}
 			}
