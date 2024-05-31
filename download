@@ -1,0 +1,14 @@
+#!/bin/bash
+go get fyne.io/fyne/v2/internal/svg@v2.4.5
+go get fyne.io/fyne/v2/internal/painter@v2.4.5
+go get fyne.io/fyne/v2/storage/repository@v2.4.5
+go get fyne.io/fyne/v2/widget@v2.4.5
+go get golang.org/x/image/draw
+go get golang.org/x/image/math/fixed
+go get github.com/yuin/goldmark
+go get github.com/go-gl/gl/v2.1/gl
+go get fyne.io/fyne/v2/internal/driver/glfw@v2.4.5
+go get github.com/fsnotify/fsnotify
+go get github.com/godbus/dbus/v5
+go get golang.org/x/sys/execabs
+
